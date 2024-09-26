@@ -1,406 +1,155 @@
 <template>
-  <div class="pokedex">
-    <div class="top-section">
-      <div class="title-screen">
-        <h1>Pokédex</h1>
-      </div>
-    </div>
-    <div class="screen-section">
-      <div class="screen">
-        <div class="buscador">
-          <input v-model="num" type="text" placeholder="Número de Pokémon" class="input"/>
-          <button @click="listarPokemones()" class="btn">Buscar</button>
+  <div class="battle-container">
+    <h2>Batalla Pokémon</h2>
+
+    <div class="pokemon-wrapper">
+      <!-- Información del Pokémon 1 -->
+      <div class="pokemon-side">
+        <div v-if="pokemon1.data">
+          <h3>{{ capitalizeFirstLetter(pokemon1.data.name) }}</h3>
+          <img :src="pokemon1.data.sprites.other['official-artwork'].front_default" alt="Imagen de {{ pokemon1.data.name }}" />
+          <p>HP: {{ pokemon1.hp }}</p>
         </div>
-        <div class="info">
-          <h2>{{ nombre }} {{ nmr }}</h2>
-          <img :src="image" alt="Imagen del Pokémon" v-if="image" class="pokemon-img" :style="{ background: type2 ? 'linear-gradient(135deg, ' + getTypeColor(type1) + ', ' + getTypeColor(type2) + ')' : getTypeColor(type1) }"/>
-        </div>
-        <div class="details">
-          <div v-if="nombre" class="exp">
-            <h3>{{ peso }}</h3>
-            <h3>{{ altura }}</h3>
-          </div>
-          <div class="type">
-            <img v-if="type1" :src="getTypeSprite(type1)" alt="Tipo 1" class="type-img">
-            <img v-if="type2" :src="getTypeSprite(type2)" alt="Tipo 2" class="type-img">
-          </div>
-          <div v-if="weaknesses && weaknesses.length > 0" class="debi">
-            <h3>Debilidades:</h3> 
-          </div>
-          <div v-if="weaknesses && weaknesses.length > 0" class="weaknesses">
-              <img v-for="(weakness, index) in weaknesses" :key="index" :src="getTypeSprite(weakness)" :alt="`Debilidad ${weakness}`" class="weakness-img">
-          </div>
-        </div>
-          <div v-if="stats.length > 0" class="stats-container">
-            <div v-for="(stat, index) in stats" :key="index" class="stat-row">
-              <div class="stat-label">{{ stat.name }}</div>
-              <div class="progress-bar">
-                <div
-                  class="progress-fill"
-                  :style="{ width: Math.min((stat.base_stat / 255)* 100,100) + '%' }"
-                ></div>
-                <div class="stat-value">{{ stat.base_stat }} / 225</div>
-              </div>
-            </div>
-          </div>
+        <div v-else>
+          <p>Cargando Pokémon 1...</p>
         </div>
       </div>
-      <div class="bottom-section">
-      <div class="buttons">
-        <div class="circle-button"></div>
-        <div class="small-buttons">
-          <div class="small-button red"></div>
-          <div class="small-button blue"></div>
+
+      <!-- Información del Pokémon 2 -->
+      <div class="pokemon-side">
+        <div v-if="pokemon2.data">
+          <h3>{{ capitalizeFirstLetter(pokemon2.data.name) }}</h3>
+          <img :src="pokemon2.data.sprites.other['official-artwork'].front_default" alt="Imagen de {{ pokemon2.data.name }}" />
+          <p>HP: {{ pokemon2.hp }}</p>
+        </div>
+        <div v-else>
+          <p>Cargando Pokémon 2...</p>
         </div>
       </div>
     </div>
+
+    <!-- Botones de ataque -->
+    <div class="attack-buttons" v-if="pokemon1.data && pokemon2.data && pokemon1.hp > 0 && pokemon2.hp > 0">
+      <button @click="attack(pokemon1, pokemon2)">¡{{ capitalizeFirstLetter(pokemon1.data.name)  }} ataca!</button>
+      <button @click="attack(pokemon2, pokemon1)">¡{{ capitalizeFirstLetter(pokemon2.data.name)  }} ataca!</button>
     </div>
+
+    <!-- Mostrar el ganador -->
+    <div v-else-if="winner">
+      <h2>{{ capitalizeFirstLetter(winner) }} es el ganador!</h2>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import axios from "axios";
-import { ref } from "vue";
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 
-let nombre = ref("");
-let peso = ref("");
-let altura = ref("");
-let image = ref("");
-let num = ref("");
-let stats = ref([]);
-let weaknesses = ref([]);
-let searched = ref(false);
-let type1 = ref("");
-let type2 = ref("");
-let nmr = ref("");
-
-async function listarPokemones() {
-  if (num.value) {
-    let url = `https://pokeapi.co/api/v2/pokemon/${num.value}`;
-    try {
-      let { data } = await axios.get(url);
-      nombre.value = capitalizeFirstLetter(data.name);
-      nmr.value = `#${data.id}`
-      peso.value = "Peso: "+data.weight / 10+"Kg";
-      altura.value = "Altura: "+data.height / 10+"M";
-      image.value = data.sprites.other['official-artwork'].front_default;
-      type1.value = data.types[0]?.type.name || '';
-      type2.value = data.types[1]?.type.name || '';
-      stats.value = data.stats.map((stat) => ({
-        name: convertStatName(stat.stat.name),
-        base_stat: stat.base_stat,
-      }));
-      await getWeaknesses(type1.value, type2.value);
-    } catch (error) {
-      console.error("Error al obtener los datos", error);
-      nombre.value = "No encontrado";
-      peso.value = "No encontrado";
-      altura.value = "No encontrado";
-      image.value = "";
-      stats.value = [];
-    } finally {
-      searched.value = true;
-    }
-  }
-}
-async function getWeaknesses(type1, type2) {
-  let url1 = `https://pokeapi.co/api/v2/type/${type1}`;
-  let url2 = type2 ? `https://pokeapi.co/api/v2/type/${type2}` : null;
-  let weaknessesSet = new Set();
-
-  try {
-    // Obtener debilidades del primer tipo
-    let { data: typeData1 } = await axios.get(url1);
-    let weaknesses1 = typeData1.damage_relations.double_damage_from.map(damage => damage.name);
-    weaknesses1.forEach(w => weaknessesSet.add(w));
-
-    // Obtener debilidades del segundo tipo (si existe)
-    if (url2) {
-      let { data: typeData2 } = await axios.get(url2);
-      let weaknesses2 = typeData2.damage_relations.double_damage_from.map(damage => damage.name);
-      weaknesses2.forEach(w => weaknessesSet.add(w));
-    }
-
-    // Filtra debilidades para mostrar solo las de doble daño
-    weaknesses.value = Array.from(weaknessesSet);
-
-  } catch (error) {
-    console.error("Error al obtener las debilidades", error);
-    weaknesses.value = [];
-  }
+// Función para obtener datos del Pokémon desde PokeAPI
+const getPokemonData = async (pokemonId) => {
+  const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`)
+  return response.data
 }
 
-function convertStatName(statName) {
-  switch (statName) {
-    case "hp":
-      return "HP";
-    case "attack":
-      return "Ataque";
-    case "defense":
-      return "Defensa";
-    case "special-attack":
-      return "Ataque Especial";
-    case "special-defense":
-      return "Defensa Especial";
-    case "speed":
-      return "Velocidad";
-    default:
-      return statName;
-  }
-}
+// Función para obtener un ID de Pokémon aleatorio entre 1 y 1010
+const getRandomPokemonId = () => Math.floor(Math.random() * 1010) + 1
 
-function getTypeSprite(type) {
-  const typeSprites = {
-    normal: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/1.png',
-    fighting: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/2.png',
-    flying: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/3.png',
-    poison: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/4.png',
-    ground: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/5.png',
-    rock: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/6.png',
-    bug: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/7.png',
-    ghost: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/8.png',
-    steel: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/9.png',
-    fire: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/10.png',
-    water: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/11.png',
-    grass: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/12.png',
-    electric: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/13.png',
-    psychic: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/14.png',
-    ice: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/15.png',
-    dragon: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/16.png',
-    dark: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/17.png',
-    fairy: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/18.png',
-  };
+// Inicializamos los Pokémon con valores reactivos
+const pokemon1 = ref({
+  id: getRandomPokemonId(),
+  data: null,
+  hp: 100,
+  attackPower: 20
+})
 
-  return typeSprites[type] || 'assets/types/default.png'; // default.png por si no se encuentra el tipo
-}
-
-function getTypeColor(type) {
-  const typeColors = {
-    normal: '#A8A77A',
-    fighting: '#C22E28',
-    flying: '#A98FF3',
-    poison: '#A33EA1',
-    ground: '#E2BF65',
-    rock: '#B6A136',
-    bug: '#A6B91A',
-    ghost: '#735797',
-    steel: '#B7B7CE',
-    fire: '#EE8130',
-    water: '#6390F0',
-    grass: '#7AC74C',
-    electric: '#F7D02C',
-    psychic: '#F95587',
-    ice: '#96D9D6',
-    dragon: '#6F35FC',
-    dark: '#705746',
-    fairy: '#D685AD',
-  };
-
-  return typeColors[type] || '#777'; // Un color por defecto si el tipo no se encuentra
-}
+const pokemon2 = ref({
+  id: getRandomPokemonId(),
+  data: null,
+  hp: 100,
+  attackPower: 15
+})
 
 function capitalizeFirstLetter(str) {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
+
+// Función de ataque
+const attack = (attacker, defender) => {
+  defender.hp -= attacker.attackPower
+  if (defender.hp < 0) defender.hp = 0
+}
+
+// Computar el ganador
+const winner = computed(() => {
+  if (pokemon1.value.hp <= 0) {
+    return pokemon2.value.data ? pokemon2.value.data.name : 'Desconocido'
+  } else if (pokemon2.value.hp <= 0) {
+    return pokemon1.value.data ? pokemon1.value.data.name : 'Desconocido'
+  }
+  return null
+})
+
+// Obtener los datos de los Pokémon cuando se monta el componente
+onMounted(async () => {
+  // Obtener datos de Pokémon 1
+  pokemon1.value.data = await getPokemonData(pokemon1.value.id)
+  pokemon1.value.hp = pokemon1.value.data.stats.find(stat => stat.stat.name === 'hp').base_stat
+
+  // Obtener datos de Pokémon 2
+  pokemon2.value.data = await getPokemonData(pokemon2.value.id)
+  pokemon2.value.hp = pokemon2.value.data.stats.find(stat => stat.stat.name === 'hp').base_stat
+})
 </script>
 
-<style>
-.debi{
-  color: #334f5e;
-  margin-top: -4%;
+<script>
+// Filtro para capitalizar los nombres de los Pokémon
+export default {
+  filters: {
+    capitalize(value) {
+      if (!value) return ''
+      return value.charAt(0).toUpperCase() + value.slice(1)
+    }
+  }
+}
+</script>
+
+<style scoped>
+.battle-container {
+  text-align: center;
+  padding: 20px;
 }
 
-.weaknesses{
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.weaknesses img{
-  width: 100%;
-}
-
-h2 {
-  color: #334f5e;
-  margin: 0px;
-}
-
-.type {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.type img{
-  width: 100%;
-}
-
-.exp {
-  color: #334f5e;
+.pokemon-wrapper {
   display: flex;
   justify-content: space-between;
-  width: 100%;
-  max-width: 200px;
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-.details {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-}
-
-h3{
-  margin-top:35px;
-  margin-bottom: 0;
-}
-
-.pokedex {
-  width: 35%;
-  background-color: #8d000c;
-  border-radius: 15px;
   padding: 20px;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+}
+
+.pokemon-side {
+  width: 45%;
   text-align: center;
 }
 
-.title-screen {
-  margin-bottom: 2px;
-  background-color: black;
-  align-items: center;
-  padding: 5px;
-  border-radius: 5px;
+img {
+  width: 150px;
+  height: 150px;
 }
 
-.title-screen h1 {
-  color: white;
-  font-size: 24px;
-}
-.screen-section{
-  height: 100%;
-}
-.screen {
-  background-color: #f0f0f0;
-  padding: 15px;
-  border-radius: 5px;
-  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
-  display: flex;  
-  flex-direction: column;
-}
-.buscador{
-  height: 65px;
-  gap: 0.5%;
-  align-items: center;
-  justify-content: center;
-}
-.input {
-  width: 70%;
-  padding: 5px;
-  border-radius: 5px;
-  border: 2px solid #c62828;
+.attack-buttons {
+  margin-top: 20px;
 }
 
-.btn {
-  background-color: #0288d1;
+button {
+  margin: 10px;
+  padding: 10px;
+  background-color: #f0ad4e;
   color: white;
+  border: none;
   border-radius: 5px;
   cursor: pointer;
-  padding: 2.7px;
-  margin-left: 1%;
-  border: 2px solid #0288d1;
-}
-.info{
-  margin-bottom: -30px;
-}
-.info img{
-  width: 45%;
-  height: auto;
-}
-.pokemon-img {
-  width: 250px;
-  height: 250px;
-}
-.stats-container{
-  width: 78%;
-  display: flex;
-  flex-direction: column;
-  align-self: center;
-}
-.stat-row {
-  margin-bottom: 10px;
 }
 
-.stat-label {
-  font-weight: bold;
-  margin-bottom: 5px;
-  color: #334f5e;
-}
-
-.progress-bar {
-  position: relative;
-  height: 20px;
-  background-color: #e0e0e0;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background-color: #a64ca6;
-  transition: width 0.5s ease;
-}
-
-.stat-value {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  font-weight: bold;
-  color: black;
-}
-
-.bottom-section .buttons {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.circle-button {
-  width: 40px;
-  height: 40px;
-  background-color: black;
-  border-radius: 50%;
-  margin-top: 15px;
-}
-@media (min-width:1200px){
-  .pokedex{
-    width: 40%;
-  }
-}
-@media (max-width:1000px){
-  .pokedex{
-    width: 50%;
-  }
-}
-@media (max-width:900px){
-  .pokedex{
-    width: 60%;
-  }
-}
-@media (max-width:800px){
-  .pokedex{
-    width: 70%;
-  }
-}
-@media (max-width:700px){
-  .pokedex{
-    width: 80%;
-  }
-}
-@media (max-width:600px){
-  .pokedex{
-    width: 90%;
-  }
+button:hover {
+  background-color: #ec971f;
 }
 </style>
