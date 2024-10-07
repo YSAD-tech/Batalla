@@ -4,8 +4,8 @@
     
     <!-- Seleccionar número de rondas -->
     <div class="input-group">
-      <label for="rounds">Número de rondas:</label>
-      <input id="rounds" type="number" v-model="selectedRounds" placeholder="Ingresa el número de rondas" min="1" />
+      <label for="rounds">Número de rondas / Pokémon por equipo:</label>
+      <input id="rounds" type="number" v-model="selectedRounds" placeholder="Ingresa el número de rondas" min="5" max="5" />
     </div>
 
     <!-- Seleccionar tipo de stat para la batalla -->
@@ -33,12 +33,12 @@
         <div class="pokemon-grid">
           <div v-for="pokemon in team1" :key="pokemon.id" 
                class="pokemon-card" 
-               :class="{ selected: selectedPokemon1.id === pokemon.id }"
-               @click="selectPokemon1(pokemon)">
-            <h4>{{ capitalizeFirstLetter(pokemon.data.name) }}</h4>
+               :class="{ selected: selectedPokemon1.id === pokemon.id, inactive: pokemon.isDefeated }"
+               @click="selectPokemon1(pokemon)" 
+               :style="{ opacity: pokemon.isDefeated ? 0.5 : 1 }">
+            <h3>{{ capitalizeFirstLetter(pokemon.data.name) }}</h3>
             <img :src="pokemon.data.sprites.other['official-artwork'].front_default" alt="Imagen de {{ pokemon.data.name }}" />
-            <p>HP: {{ pokemon.hp }}</p>
-            <p>{{ capitalizeFirstLetter(selectedStat) }}: {{ pokemon.attack }}</p>
+            <h4>{{ capitalizeFirstLetter(selectedStat) }}: {{ getStatValue(pokemon, selectedStat) }}</h4>
           </div>
         </div>
       </div>
@@ -47,11 +47,13 @@
       <div class="pokemon-side">
         <h3>Equipo 2</h3>
         <div class="pokemon-grid">
-          <div v-for="pokemon in team2" :key="pokemon.id" class="pokemon-card">
-            <h4>{{ capitalizeFirstLetter(pokemon.data.name) }}</h4>
+          <div v-for="pokemon in team2" :key="pokemon.id" 
+               class="pokemon-card"
+               :class="{ inactive: pokemon.isDefeated }"
+               :style="{ opacity: pokemon.isDefeated ? 0.5 : 1 }">
+            <h3>{{ capitalizeFirstLetter(pokemon.data.name) }}</h3>
             <img :src="pokemon.data.sprites.other['official-artwork'].front_default" alt="Imagen de {{ pokemon.data.name }}" />
-            <p>HP: {{ pokemon.hp }}</p>
-            <p>{{ capitalizeFirstLetter(selectedStat) }}: {{ pokemon.attack }}</p>
+            <h4>{{ capitalizeFirstLetter(selectedStat) }}: {{ getStatValue(pokemon, selectedStat) }}</h4>
           </div>
         </div>
       </div>
@@ -59,12 +61,12 @@
 
     <!-- Botones de ataque -->
     <div class="attack-buttons" v-if="canAttack">
-      <button @click="attack(selectedPokemon1, randomPokemonFromTeam2())">¡{{ capitalizeFirstLetter(selectedPokemon1.data.name) }} ataca!</button>
+      <button @click="attack(selectedPokemon1, selectedPokemon2)">¡{{ capitalizeFirstLetter(selectedPokemon1.data.name) }} ataca!</button>
     </div>
 
     <!-- Mostrar el ganador -->
     <div v-else-if="winner">
-      <h2>{{ capitalizeFirstLetter(winner) }} es el ganador después de {{ totalRounds }} rondas!</h2>
+      <h2>{{ winner }} es el ganador después de {{ totalRounds }} rondas!</h2>
     </div>
   </div>
 </template>
@@ -79,26 +81,32 @@ const getPokemonData = async (pokemonId) => {
   return response.data
 }
 
-// Función para obtener un ID de Pokémon aleatorio entre 1 y 1010
-const getRandomPokemonId = () => Math.floor(Math.random() * 1010) + 1
+// Función para obtener un ID de Pokémon aleatorio entre 1 y 1025
+const getRandomPokemonId = () => Math.floor(Math.random() * 1025) + 1
 
 // Variables reactivas para los Pokémon
 const team1 = ref([]);
 const team2 = ref([]);
 const selectedPokemon1 = ref({});
+const selectedPokemon2 = ref({});
 
 // Variables reactivas para controlar el estado del juego
 const isBattleStarted = ref(false)
 const totalRounds = ref(0)
 const currentRound = ref(1)
+const team1DefeatedCount = ref(0);
+const team2DefeatedCount = ref(0);
 
 // Variables para seleccionar número de rondas y tipo de stat
-const selectedRounds = ref(3)
+const selectedRounds = ref(5)
 const selectedStat = ref('attack')
 
-// Inicializar los equipos
+// Inicializar los equipos con el número de Pokémon basado en la cantidad de rondas seleccionadas
 const initializeTeams = async () => {
-  for (let i = 0; i < 5; i++) {
+  team1.value = [];
+  team2.value = [];
+
+  for (let i = 0; i < selectedRounds.value; i++) {
     const pokemonId1 = getRandomPokemonId();
     const pokemonId2 = getRandomPokemonId();
     
@@ -108,61 +116,87 @@ const initializeTeams = async () => {
     team1.value.push({
       id: pokemonId1,
       data: data1,
-      hp: data1.stats.find(stat => stat.stat.name === 'hp').base_stat,
-      attack: data1.stats.find(stat => stat.stat.name === selectedStat.value).base_stat
+      isDefeated: false // Indicador de si el Pokémon fue derrotado
     });
     
     team2.value.push({
       id: pokemonId2,
       data: data2,
-      hp: data2.stats.find(stat => stat.stat.name === 'hp').base_stat,
-      attack: data2.stats.find(stat => stat.stat.name === selectedStat.value).base_stat
+      isDefeated: false // Indicador de si el Pokémon fue derrotado
     });
   }
 };
 
+// Función para obtener el valor del stat seleccionado dinámicamente
+const getStatValue = (pokemon, statName) => {
+  return pokemon.data.stats.find(stat => stat.stat.name === statName).base_stat;
+};
+
 // Función para comenzar la batalla
 const startBattle = async () => {
+  if (selectedRounds.value <= 0) {
+    alert("Debes seleccionar al menos 1 ronda.");
+    return;
+  }
   totalRounds.value = selectedRounds.value;
   isBattleStarted.value = true;
   await initializeTeams();
 }
-
+// Seleccionar Pokémon de equipo 1
 const selectPokemon1 = (pokemon) => {
-  selectedPokemon1.value = pokemon;
-};
-
-const randomPokemonFromTeam2 = () => {
-  const alivePokemons = team2.value.filter(p => p.hp > 0);
-  return alivePokemons[Math.floor(Math.random() * alivePokemons.length)];
-};
-
-// Función de ataque basada en el stat seleccionado
-const attack = (attacker, defender) => {
-  defender.hp -= attacker.attack;
-  if (defender.hp < 0) defender.hp = 0;
-
-  // Verificar si un equipo ha sido derrotado
-  const team1Alive = team1.value.some(p => p.hp > 0);
-  const team2Alive = team2.value.some(p => p.hp > 0);
-
-  if (!team1Alive || !team2Alive) {
-    currentRound.value++;
+  if (!pokemon.isDefeated) {
+    selectedPokemon1.value = pokemon;
+    selectedPokemon2.value = randomPokemonFromTeam2(); // Selecciona automáticamente un Pokémon aleatorio del equipo 2
   }
 };
 
-// Comprobar el ganador
-const winner = computed(() => {
-  const team1Alive = team1.value.some(p => p.hp > 0);
-  const team2Alive = team2.value.some(p => p.hp > 0);
+const randomPokemonFromTeam2 = () => {
+  const alivePokemons = team2.value.filter(p => !p.isDefeated);
+  return alivePokemons[Math.floor(Math.random() * alivePokemons.length)];
+};
 
-  if (!team1Alive) return "Equipo 2";
-  if (!team2Alive) return "Equipo 1";
-  return null;
-});
+// Función de ataque que compara el valor del stat seleccionado para elegir al ganador
+const attack = (pokemon1, pokemon2) => {
+  const stat1 = getStatValue(pokemon1, selectedStat.value);
+  const stat2 = getStatValue(pokemon2, selectedStat.value);
+
+  if (stat1 > stat2) {
+    pokemon2.isDefeated = true; // El Pokémon del equipo 2 es derrotado
+    team2DefeatedCount.value++;
+  } else if (stat1 < stat2) {
+    pokemon1.isDefeated = true; // El Pokémon del equipo 1 es derrotado
+    team1DefeatedCount.value++;
+  } else {
+    // En caso de empate, ambos pierden
+    pokemon1.isDefeated = true;
+    pokemon2.isDefeated = true;
+    team1DefeatedCount.value++;
+    team2DefeatedCount.value++;
+  }
+
+  currentRound.value++;
+
+  // Comprobar si se han completado todas las rondas
+  if (currentRound.value > totalRounds.value) {
+    determineWinner();
+  }
+};
+
+// Determinar el ganador al final de las rondas
+const determineWinner = () => {
+  if (team1DefeatedCount.value < team2DefeatedCount.value) {
+    winner.value = "Equipo 1";
+  } else if (team1DefeatedCount.value > team2DefeatedCount.value) {
+    winner.value = "Equipo 2";
+  } else {
+    winner.value = "Empate";
+  }
+};
+
+const winner = ref(null);
 
 const canAttack = computed(() => {
-  return selectedPokemon1.value.id && team2.value.some(p => p.hp > 0);
+  return selectedPokemon1.value.id && selectedPokemon2.value.id && !selectedPokemon1.value.isDefeated && !selectedPokemon2.value.isDefeated;
 });
 
 function capitalizeFirstLetter(str) {
@@ -179,6 +213,7 @@ function capitalizeFirstLetter(str) {
   border-radius: 10px;
   background-color: #f9f9f9;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  color: #45a049;
 }
 
 .menu-container h2 {
@@ -195,12 +230,11 @@ function capitalizeFirstLetter(str) {
 .menu-container input {
   margin-bottom: 20px;
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid #4CAF50;
   border-radius: 5px;
-  width: 200px;
 }
 
-.menu-container button {
+button {
   padding: 10px 20px;
   background-color: #4CAF50;
   color: white;
@@ -210,22 +244,28 @@ function capitalizeFirstLetter(str) {
   transition: background-color 0.3s ease;
 }
 
-.menu-container button:hover {
+button:hover {
   background-color: #45a049;
 }
 
 .battle-container {
+  background-image: url(https://wallpapers-clan.com/wp-content/uploads/2023/11/pokemon-smiling-gengar-desktop-wallpaper-preview.jpg); /* Reemplaza con la URL de tu imagen */
+  background-position: center; /* Centra la imagen */
+  background-size: cover; /* Cubre el área de la carta */
+  background-repeat: no-repeat; /* No repite la imagen */
   text-align: center;
   padding: 20px;
-  background-color: #f9f9f9; /* Fondo claro para el contenedor */
+  background-color: #f9f9f9;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  color: #ccc;
 }
 
 .pokemon-wrapper {
   display: flex;
-  justify-content: space-between; /* Espacio entre equipos */
+  justify-content: space-between;
   padding: 20px;
+  color: #45a049;
 }
 
 .pokemon-side {
@@ -235,30 +275,44 @@ function capitalizeFirstLetter(str) {
 
 .pokemon-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* Tres columnas en la parte superior */
-  gap: 10px; /* Espacio entre tarjetas */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
 
 .pokemon-card {
-  background-color: #e0f7fa; /* Color de fondo para cada Pokémon */
-  border: 1px solid #4CAF50; /* Bordes para separar Pokémon */
+  background-image: url(https://i.pinimg.com/736x/21/87/c3/2187c30094896c021c5c2ee8c05e9e52.jpg); /* Reemplaza con la URL de tu imagen */
+  background-position: center; /* Centra la imagen */
+  background-size: cover; /* Cubre el área de la carta */
+  background-repeat: no-repeat; /* No repite la imagen */
+  background-color: #e0f7fa;
+  border: 1px solid #4CAF50;
   border-radius: 10px;
   padding: 10px;
-  cursor: pointer; /* Cambiar cursor al pasar sobre la tarjeta */
-  transition: transform 0.2s; /* Efecto de transformación */
+  cursor: pointer;
+  transition: transform 0.2s;
+  color: rgb(156, 0, 0);
 }
 
+.pokemon-card h3 h4 {
+  position: relative; /* Para asegurarte de que el texto se vea bien sobre la imagen */
+  z-index: 1; /* Asegúrate de que el texto esté por encima de la imagen */
+
+}
 .pokemon-card:hover {
-  transform: scale(1.05); /* Efecto de ampliación al pasar el mouse */
+  transform: scale(1.05);
 }
 
 .selected {
-  border-color: #f44336; /* Color de borde para Pokémon seleccionado */
+  border-color: #f44336;
+}
+
+.inactive {
+  background-color: #ccc;
 }
 
 img {
-  width: 100%; /* Ajustar al 100% del contenedor */
-  height: auto; /* Mantener proporciones */
+  width: 110%;
+  height:auto;
 }
 
 .attack-buttons {
@@ -277,6 +331,6 @@ img {
 }
 
 .attack-buttons button:hover {
-  background-color: #ec971f; /* Cambio de color en hover */
+  background-color: #ec971f;
 }
 </style>
