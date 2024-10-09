@@ -206,18 +206,22 @@ function capitalizeFirstLetter(str) {
 
 <style scoped>
 .menu-container {
+  background-image: url(https://fotografias-neox.atresmedia.com/clipping/cmsimages01/2018/01/19/6B1F563F-6FE0-40D8-AEE3-DFE3586F9E0C/98.jpg?crop=711,400,x37,y0&width=1900&height=1069&optimize=high&format=webply); /* Reemplaza con la URL de tu imagen */
+  background-position: center; /* Centra la imagen */
+  background-size: cover; /* Cubre el área de la carta */
+  background-repeat: no-repeat; /* No repite la imagen */
   text-align: center;
   margin-top: 50px;
   padding: 20px;
-  border: 2px solid #4CAF50;
+  border: 2px solid #ffffff;
   border-radius: 10px;
   background-color: #f9f9f9;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  color: #45a049;
+  box-shadow: 0 4px 8px rgba(255, 255, 255, 0);
+  color: #ffffff;
 }
 
 .menu-container h2 {
-  color: #4CAF50;
+  color: #ffffff;
   margin-bottom: 20px;
 }
 
@@ -230,13 +234,13 @@ function capitalizeFirstLetter(str) {
 .menu-container input {
   margin-bottom: 20px;
   padding: 10px;
-  border: 1px solid #4CAF50;
+  border: 1px solid #00000000;
   border-radius: 5px;
 }
 
 button {
   padding: 10px 20px;
-  background-color: #4CAF50;
+  background-color: #000000;
   color: white;
   border: none;
   border-radius: 5px;
@@ -280,17 +284,11 @@ button:hover {
 }
 
 .pokemon-card {
-  background-image: url(https://i.pinimg.com/736x/21/87/c3/2187c30094896c021c5c2ee8c05e9e52.jpg); /* Reemplaza con la URL de tu imagen */
-  background-position: center; /* Centra la imagen */
-  background-size: cover; /* Cubre el área de la carta */
-  background-repeat: no-repeat; /* No repite la imagen */
-  background-color: #e0f7fa;
   border: 1px solid #4CAF50;
   border-radius: 10px;
-  padding: 10px;
   cursor: pointer;
   transition: transform 0.2s;
-  color: rgb(156, 0, 0);
+  color: rgba(255, 255, 255, 0.79);
 }
 
 .pokemon-card h3 h4 {
@@ -311,7 +309,7 @@ button:hover {
 }
 
 img {
-  width: 110%;
+  width: 90%;
   height:auto;
 }
 
