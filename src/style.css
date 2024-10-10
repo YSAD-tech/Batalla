@@ -26,13 +26,57 @@ body {
   margin: 0;
   display: flex;
   place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  height: 100vh !important;
 }
 
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+}
+
+.battle-container h3 {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 15px !important;
+}
+
+#app{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+.contenedor {
+  background-image: url(https://fotografias-neox.atresmedia.com/clipping/cmsimages01/2018/01/19/6B1F563F-6FE0-40D8-AEE3-DFE3586F9E0C/98.jpg?crop=711,400,x37,y0&width=1900&height=1069&optimize=high&format=webply)!important;
+  background-position: center !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  text-align: center !important;
+  margin-top: 50px !important;
+  padding: 20px !important;
+  border: 2px solid #ffffff!important;
+  border-radius: 10px!important;
+  width: 60%;
+  background-color: #f9f9f9!important;
+  box-shadow: 0 4px 8px rgba(255, 255, 255, 0)!important;
+  color: #ffffff!important;
+}
+.winner.contenedor h2 {
+  color: #ffffff!important;
+  margin-bottom: 20px!important;
+} 
+
+.contenedor label {
+  margin-right: 10px!important;
+  font-weight: bold!important;
+}
+
+.contenedor select, 
+.contenedor input {
+  margin-bottom: 20px!important;
+  padding: 10px!important;
+  border: 1px solid #00000000!important;
+  border-radius: 5px!important;
 }
 
 button {

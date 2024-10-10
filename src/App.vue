@@ -1,5 +1,5 @@
 <template>
-  <div class="menu-container" v-if="!isBattleStarted">
+  <div class="contenedor" v-if="!isBattleStarted">
     <h2>Bienvenido al simulador de batalla Pokémon</h2>
     
     <!-- Campo de entrada para el nombre del jugador -->
@@ -37,7 +37,6 @@
                :style="{ opacity: pokemon.isDefeated ? 0.5 : 1 }">
             <h3>{{ capitalizeFirstLetter(pokemon.data.name) }}</h3>
             <img :src="pokemon.data.sprites.other['official-artwork'].front_default" alt="Imagen de {{ pokemon.data.name }}" />
-            <h4>{{ capitalizeFirstLetter(selectedStat) }}: {{ getStatValue(pokemon, selectedStat) }}</h4>
           </div>
         </div>
       </div>
@@ -52,7 +51,6 @@
                :style="{ opacity: pokemon.isDefeated ? 0.5 : 1 }">
             <h3>{{ capitalizeFirstLetter(pokemon.data.name) }}</h3>
             <img :src="pokemon.data.sprites.other['official-artwork'].front_default" alt="Imagen de {{ pokemon.data.name }}" />
-            <h4>{{ capitalizeFirstLetter(selectedStat) }}: {{ getStatValue(pokemon, selectedStat) }}</h4>
           </div>
         </div>
       </div>
@@ -74,7 +72,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import axios from 'axios'
-
+import { useQuasar } from 'quasar'
 // Función para obtener datos del Pokémon desde PokeAPI
 const getPokemonData = async (pokemonId) => {
   const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`)
@@ -107,6 +105,7 @@ const totalRounds = ref(5) // Establecer siempre 5 rondas
 const currentRound = ref(1)
 const team1DefeatedCount = ref(0);
 const team2DefeatedCount = ref(0);
+const $q = useQuasar()
 
 // Variables para seleccionar número de rondas y tipo de stat
 const playerName = ref('');
@@ -143,11 +142,14 @@ const initializeTeams = async () => {
 const getStatValue = (pokemon, statName) => {
   return pokemon.data.stats.find(stat => stat.stat.name === statName).base_stat;
 };
-
 // Función para comenzar la batalla
 const startBattle = async () => {
   if (playerName.value.trim() === '') {
-    alert("Debes ingresar un nombre para el jugador.");
+    $q.notify({
+          message: 'Debes ingresar un nombre para el jugador.',
+          color: 'purple',
+          position: 'top'
+        });
     return;
   }
 
@@ -167,9 +169,17 @@ const selectPokemon1 = (pokemon) => {
     pokemon.isSelected = true; // Marca el Pokémon como seleccionado
     selectedPokemon2.value = randomPokemonFromTeam2(); // Selecciona automáticamente un Pokémon aleatorio del equipo 2
   } else if (pokemon.isDefeated) {
-    alert("Este Pokémon está derrotado, elige otro.");
+    $q.notify({
+          message: 'Este Pokémon está derrotado, elige otro.',
+          color: 'purple',
+          position: 'top'
+        });
   } else {
-    alert("Este Pokémon ya ha sido seleccionado para atacar.");
+    $q.notify({
+          message: 'Este Pokémon ya ha sido seleccionado para atacar.',
+          color: 'purple',
+          position: 'top'
+        });
   }
 };
 
@@ -229,38 +239,6 @@ function capitalizeFirstLetter(str) {
 </script>
 
 <style scoped>
-.menu-container {
-  background-image: url(https://fotografias-neox.atresmedia.com/clipping/cmsimages01/2018/01/19/6B1F563F-6FE0-40D8-AEE3-DFE3586F9E0C/98.jpg?crop=711,400,x37,y0&width=1900&height=1069&optimize=high&format=webply); /* Reemplaza con la URL de tu imagen */
-  background-position: center; /* Centra la imagen */
-  background-size: cover; /* Cubre el área de la carta */
-  background-repeat: no-repeat; /* No repite la imagen */
-  text-align: center;
-  margin-top: 50px;
-  padding: 20px;
-  border: 2px solid #ffffff;
-  border-radius: 10px;
-  background-color: #f9f9f9;
-  box-shadow: 0 4px 8px rgba(255, 255, 255, 0);
-  color: #ffffff;
-}
-
-.menu-container h2 {
-  color: #ffffff;
-  margin-bottom: 20px;
-}
-
-.menu-container label {
-  margin-right: 10px;
-  font-weight: bold;
-}
-
-.menu-container select, 
-.menu-container input {
-  margin-bottom: 20px;
-  padding: 10px;
-  border: 1px solid #00000000;
-  border-radius: 5px;
-}
 
 button {
   padding: 10px 20px;
@@ -316,6 +294,7 @@ button:hover {
 }
 
 .pokemon-card h3 h4 {
+  font-size: 20px;
   position: relative; /* Para asegurarte de que el texto se vea bien sobre la imagen */
   z-index: 1; /* Asegúrate de que el texto esté por encima de la imagen */
 
