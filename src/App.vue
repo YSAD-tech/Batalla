@@ -2,10 +2,10 @@
   <div class="menu-container" v-if="!isBattleStarted">
     <h2>Bienvenido al simulador de batalla Pokémon</h2>
     
-    <!-- Seleccionar número de rondas -->
+    <!-- Campo de entrada para el nombre del jugador -->
     <div class="input-group">
-      <label for="rounds">Número de rondas / Pokémon por equipo:</label>
-      <input id="rounds" type="number" v-model="selectedRounds" placeholder="Ingresa el número de rondas" min="5" max="5" />
+      <label for="player-name">Nombre del jugador (Equipo 1):</label>
+      <input id="player-name" type="text" v-model="playerName" placeholder="Ingresa tu nombre" />
     </div>
 
     <!-- Seleccionar tipo de stat para la batalla -->
@@ -25,11 +25,10 @@
 
   <div class="battle-container" v-else>
     <h2>Batalla Pokémon (Ronda {{ currentRound }} de {{ totalRounds }})</h2>
-
     <div class="pokemon-wrapper">
       <!-- Información del equipo 1 -->
       <div class="pokemon-side">
-        <h3>Equipo 1</h3>
+        <h3>{{ playerName }} (Equipo 1)</h3>
         <div class="pokemon-grid">
           <div v-for="pokemon in team1" :key="pokemon.id" 
                class="pokemon-card" 
@@ -45,7 +44,7 @@
 
       <!-- Información del equipo 2 -->
       <div class="pokemon-side">
-        <h3>Equipo 2</h3>
+        <h3>Bot (Equipo 2)</h3>
         <div class="pokemon-grid">
           <div v-for="pokemon in team2" :key="pokemon.id" 
                class="pokemon-card"
@@ -65,8 +64,9 @@
     </div>
 
     <!-- Mostrar el ganador -->
-    <div v-else-if="winner">
-      <h2>{{ winner }} es el ganador después de {{ totalRounds }} rondas!</h2>
+    <div class="winner" v-else-if="winner">
+      <h2>{{ winner }} es el ganador de la batalla!!</h2>
+      <button @click="resetBattle" class="restart-button">Volver a Jugar</button>
     </div>
   </div>
 </template>
@@ -81,6 +81,17 @@ const getPokemonData = async (pokemonId) => {
   return response.data
 }
 
+const resetBattle = () => {
+  // Reiniciar solo las rondas y los equipos
+  currentRound.value = 1;
+  team1DefeatedCount.value = 0;
+  team2DefeatedCount.value = 0;
+
+  // Reiniciar los equipos
+  initializeTeams(); // Inicializa los equipos nuevamente
+  winner.value = null; // Reinicia el ganador
+};
+
 // Función para obtener un ID de Pokémon aleatorio entre 1 y 1025
 const getRandomPokemonId = () => Math.floor(Math.random() * 1025) + 1
 
@@ -92,13 +103,13 @@ const selectedPokemon2 = ref({});
 
 // Variables reactivas para controlar el estado del juego
 const isBattleStarted = ref(false)
-const totalRounds = ref(0)
+const totalRounds = ref(5) // Establecer siempre 5 rondas
 const currentRound = ref(1)
 const team1DefeatedCount = ref(0);
 const team2DefeatedCount = ref(0);
 
 // Variables para seleccionar número de rondas y tipo de stat
-const selectedRounds = ref(5)
+const playerName = ref('');
 const selectedStat = ref('attack')
 
 // Inicializar los equipos con el número de Pokémon basado en la cantidad de rondas seleccionadas
@@ -106,7 +117,7 @@ const initializeTeams = async () => {
   team1.value = [];
   team2.value = [];
 
-  for (let i = 0; i < selectedRounds.value; i++) {
+  for (let i = 0; i < 5; i++) {
     const pokemonId1 = getRandomPokemonId();
     const pokemonId2 = getRandomPokemonId();
     
@@ -116,7 +127,8 @@ const initializeTeams = async () => {
     team1.value.push({
       id: pokemonId1,
       data: data1,
-      isDefeated: false // Indicador de si el Pokémon fue derrotado
+      isDefeated: false, // Indicador de si el Pokémon fue derrotado
+      isSelected: false,  // Indicador de si el Pokémon fue seleccionado
     });
     
     team2.value.push({
@@ -134,21 +146,33 @@ const getStatValue = (pokemon, statName) => {
 
 // Función para comenzar la batalla
 const startBattle = async () => {
-  if (selectedRounds.value <= 0) {
-    alert("Debes seleccionar al menos 1 ronda.");
+  if (playerName.value.trim() === '') {
+    alert("Debes ingresar un nombre para el jugador.");
     return;
   }
-  totalRounds.value = selectedRounds.value;
+
   isBattleStarted.value = true;
   await initializeTeams();
-}
+
+  // Reiniciar la selección de Pokémon
+  team1.value.forEach(pokemon => {
+    pokemon.isSelected = false; // Reiniciar isSelected al comienzo de la batalla
+  });
+};
+
 // Seleccionar Pokémon de equipo 1
 const selectPokemon1 = (pokemon) => {
-  if (!pokemon.isDefeated) {
+  if (!pokemon.isDefeated && !pokemon.isSelected) {
     selectedPokemon1.value = pokemon;
+    pokemon.isSelected = true; // Marca el Pokémon como seleccionado
     selectedPokemon2.value = randomPokemonFromTeam2(); // Selecciona automáticamente un Pokémon aleatorio del equipo 2
+  } else if (pokemon.isDefeated) {
+    alert("Este Pokémon está derrotado, elige otro.");
+  } else {
+    alert("Este Pokémon ya ha sido seleccionado para atacar.");
   }
 };
+
 
 const randomPokemonFromTeam2 = () => {
   const alivePokemons = team2.value.filter(p => !p.isDefeated);
@@ -185,7 +209,7 @@ const attack = (pokemon1, pokemon2) => {
 // Determinar el ganador al final de las rondas
 const determineWinner = () => {
   if (team1DefeatedCount.value < team2DefeatedCount.value) {
-    winner.value = "Equipo 1";
+    winner.value = playerName ;
   } else if (team1DefeatedCount.value > team2DefeatedCount.value) {
     winner.value = "Equipo 2";
   } else {
@@ -268,7 +292,7 @@ button:hover {
 .pokemon-wrapper {
   display: flex;
   justify-content: space-between;
-  padding: 20px;
+  margin-top: -3%;
   color: #45a049;
 }
 
@@ -330,5 +354,22 @@ img {
 
 .attack-buttons button:hover {
   background-color: #ec971f;
+}
+
+.restart-button {
+  background-color: #b700ff; /* Cambia el color si lo deseas */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.restart-button:hover {
+  background-color: #700092; /* Color al pasar el mouse */
+}
+.winner h2{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
 }
 </style>
