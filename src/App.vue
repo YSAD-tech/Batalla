@@ -295,8 +295,9 @@ button:hover {
 .pokemon-wrapper {
   display: flex;
   justify-content: space-between;
-  margin-top: -3%;
+  margin-top: -5%;
   color: #45a049;
+  margin-bottom: 15px;
 }
 
 .pokemon-side {
@@ -342,7 +343,7 @@ img {
 }
 
 .attack-buttons {
-  margin-top: 20px;
+  padding-top: 30px;
   min-height: 60px; /* Reserva espacio para los botones de ataque, incluso si están ocultos */
   display: flex;
   justify-content: center; /* Centra los botones */
