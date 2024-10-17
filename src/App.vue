@@ -60,10 +60,14 @@
     <div class="attack-buttons" v-if="canAttack">
       <button @click="attack(selectedPokemon1, selectedPokemon2)">¡{{ capitalizeFirstLetter(selectedPokemon1.data.name) }} ataca!</button>
     </div>
+    <!-- Mostrar el mensaje de la batalla -->
+<div v-if="battleMessage" class="battle-message">
+  <h3>{{ battleMessage }}</h3>
+</div>
 
     <!-- Mostrar el ganador -->
     <div class="winner" v-else-if="winner">
-      <h2>{{ winner }} es el ganador de la batalla!!</h2>
+      <h4>{{ winner }} es el ganador de la batalla!!</h4>
       <button @click="resetBattle" class="restart-button">Volver a Jugar</button>
     </div>
   </div>
@@ -100,12 +104,14 @@ const selectedPokemon1 = ref({});
 const selectedPokemon2 = ref({});
 
 // Variables reactivas para controlar el estado del juego
+const battleMessage = ref('');
 const isBattleStarted = ref(false)
 const totalRounds = ref(5) // Establecer siempre 5 rondas
 const currentRound = ref(1)
 const team1DefeatedCount = ref(0);
 const team2DefeatedCount = ref(0);
 const $q = useQuasar()
+
 
 // Variables para seleccionar número de rondas y tipo de stat
 const playerName = ref('');
@@ -170,18 +176,19 @@ const selectPokemon1 = (pokemon) => {
     selectedPokemon2.value = randomPokemonFromTeam2(); // Selecciona automáticamente un Pokémon aleatorio del equipo 2
   } else if (pokemon.isDefeated) {
     $q.notify({
-          message: 'Este Pokémon está derrotado, elige otro.',
-          color: 'purple',
-          position: 'top'
-        });
+      message: 'Este Pokémon está derrotado, elige otro.',
+      color: 'purple',
+      position: 'top'
+    });
   } else {
     $q.notify({
-          message: 'Este Pokémon ya ha sido seleccionado para atacar.',
-          color: 'purple',
-          position: 'top'
-        });
+      message: 'Este Pokémon ya ha sido seleccionado para atacar.',
+      color: 'purple',
+      position: 'top'
+    });
   }
 };
+
 
 
 const randomPokemonFromTeam2 = () => {
@@ -193,6 +200,16 @@ const randomPokemonFromTeam2 = () => {
 const attack = (pokemon1, pokemon2) => {
   const stat1 = getStatValue(pokemon1, selectedStat.value);
   const stat2 = getStatValue(pokemon2, selectedStat.value);
+
+  // Generar el mensaje de la batalla
+  const battleMessage = `${capitalizeFirstLetter(pokemon1.data.name)} ataca a ${capitalizeFirstLetter(pokemon2.data.name)}!`;
+
+  // Mostrar la notificación con el mensaje de la batalla
+  $q.notify({
+    message: battleMessage,
+    color: 'orange',
+    position: 'top',
+  });
 
   if (stat1 > stat2) {
     pokemon2.isDefeated = true; // El Pokémon del equipo 2 es derrotado
@@ -239,6 +256,11 @@ function capitalizeFirstLetter(str) {
 </script>
 
 <style scoped>
+.battle-message {
+  margin-top: 20px;
+  font-size: 24px;
+  color: #f0ad4e;
+}
 
 button {
   padding: 10px 20px;
@@ -265,6 +287,9 @@ button:hover {
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   color: #ccc;
+  position: relative; /* Necesario para que el botón se posicione en relación al contenedor */
+  min-height: 600px; /* Establece una altura mínima para evitar cambios de tamaño */
+  padding-bottom: 60px; /* Espacio para el botón "Volver a Jugar" */
 }
 
 .pokemon-wrapper {
@@ -318,6 +343,32 @@ img {
 
 .attack-buttons {
   margin-top: 20px;
+  min-height: 60px; /* Reserva espacio para los botones de ataque, incluso si están ocultos */
+  display: flex;
+  justify-content: center; /* Centra los botones */
+  align-items: center; /* Alinea verticalmente */
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60px; /* Reserva espacio para los botones de ataque */
+}
+.battle-message{
+  position: absolute;
+  bottom: 80px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  min-height: 60px; /* Reserva espacio para el mensaje */
+}
+
+.battle-message,
+.attack-buttons,
+.winner {
+  min-height: 50px;
 }
 
 .attack-buttons button {
@@ -336,19 +387,68 @@ img {
 }
 
 .restart-button {
-  background-color: #b700ff; /* Cambia el color si lo deseas */
+  position: absolute;
+  bottom: 20px; /* Distancia desde la parte inferior */
+  right: 20px; /* Distancia desde la derecha */
+  background-color: #b700ff; /* Mantén el color del botón */
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  padding: 10px 20px; /* Tamaño del botón */
+  transition: background-color 0.3s ease;
 }
+
 .restart-button:hover {
   background-color: #700092; /* Color al pasar el mouse */
 }
-.winner h2{
+.winner h4{
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
+}
+.contenedor {
+  background-image: url(https://steamuserimages-a.akamaihd.net/ugc/1690499676527753284/58A4A8691135FAB510042A54EDD97EB159EBE9E1/?imw=637&imh=358&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true);
+  background-position: center !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  text-align: center !important;
+  margin-top: 50px !important;
+  padding: 20px !important;
+  border: 2px solid #ffffff!important;
+  border-radius: 10px!important;
+  width: 60%;
+  background-color: #f9f9f9!important;
+  box-shadow: 0 4px 8px rgba(255, 255, 255, 0)!important;
+  color: #ffffff!important;
+}
+.winner.contenedor h2 {
+  color: #ffffff!important;
+  margin-bottom: 20px!important;
+} 
+
+.contenedor label {
+  margin-right: 10px!important;
+  font-weight: bold!important;
+}
+
+.contenedor select, 
+.contenedor input {
+  margin-bottom: 20px!important;
+  padding: 10px!important;
+  border: 1px solid #00000000!important;
+  border-radius: 5px!important;
+}
+.input-group{
+  font-size: 20px;
+}
+.input-group input, select{
+  width: 58%;
+}
+.winner h4{
+  background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+  -webkit-background-clip: text;
+  color: transparent;
 }
 </style>
