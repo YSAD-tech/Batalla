@@ -1,7 +1,7 @@
 <template>
   <div class="contenedor" v-if="!isBattleStarted">
     <h2>Bienvenido al simulador de batalla Pokémon</h2>
-    
+
     <!-- Campo de entrada para el nombre del jugador -->
     <div class="input-group">
       <label for="player-name">Nombre del jugador (Equipo 1):</label>
@@ -30,13 +30,12 @@
       <div class="pokemon-side">
         <h3>{{ playerName }} (Equipo 1)</h3>
         <div class="pokemon-grid">
-          <div v-for="pokemon in team1" :key="pokemon.id" 
-               class="pokemon-card" 
-               :class="{ selected: selectedPokemon1.id === pokemon.id, inactive: pokemon.isDefeated }"
-               @click="selectPokemon1(pokemon)" 
-               :style="{ opacity: pokemon.isDefeated ? 0.5 : 1 }">
+          <div v-for="pokemon in team1" :key="pokemon.id" class="pokemon-card"
+            :class="{ selected: selectedPokemon1.id === pokemon.id, loser1: pokemon.isDefeated, winner1: pokemon.isWinner }"
+            @click="selectPokemon1(pokemon)" :style="{ opacity: pokemon.isDefeated ? 0.5 : 1 }">
             <h3>{{ capitalizeFirstLetter(pokemon.data.name) }}</h3>
-            <img :src="pokemon.data.sprites.other['official-artwork'].front_default" alt="Imagen de {{ pokemon.data.name }}" />
+            <img :src="pokemon.data.sprites.other['official-artwork'].front_default"
+              alt="Imagen de {{ pokemon.data.name }}" />
           </div>
         </div>
       </div>
@@ -45,25 +44,27 @@
       <div class="pokemon-side">
         <h3>Bot (Equipo 2)</h3>
         <div class="pokemon-grid">
-          <div v-for="pokemon in team2" :key="pokemon.id" 
-               class="pokemon-card"
-               :class="{ inactive: pokemon.isDefeated }"
-               :style="{ opacity: pokemon.isDefeated ? 0.5 : 1 }">
+          <div v-for="pokemon in team2" :key="pokemon.id" class="pokemon-card"
+            :class="{ loser1: pokemon.isDefeated, winner1: pokemon.isWinner }"
+            :style="{ opacity: pokemon.isDefeated ? 0.5 : 1 }">
             <h3>{{ capitalizeFirstLetter(pokemon.data.name) }}</h3>
-            <img :src="pokemon.data.sprites.other['official-artwork'].front_default" alt="Imagen de {{ pokemon.data.name }}" />
+            <img :src="pokemon.data.sprites.other['official-artwork'].front_default"
+              alt="Imagen de {{ pokemon.data.name }}" />
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- Botones de ataque -->
     <div class="attack-buttons" v-if="canAttack">
-      <button @click="attack(selectedPokemon1, selectedPokemon2)">¡{{ capitalizeFirstLetter(selectedPokemon1.data.name) }} ataca!</button>
+      <button @click="attack(selectedPokemon1, selectedPokemon2)">¡{{ capitalizeFirstLetter(selectedPokemon1.data.name)
+        }} ataca!</button>
     </div>
     <!-- Mostrar el mensaje de la batalla -->
-<div v-if="battleMessage" class="battle-message">
-  <h3>{{ battleMessage }}</h3>
-</div>
+    <div v-if="battleMessage" class="battle-message">
+      <h3>{{ battleMessage }}</h3>
+    </div>
 
     <!-- Mostrar el ganador -->
     <div class="winner" v-else-if="winner">
@@ -83,13 +84,25 @@ const getPokemonData = async (pokemonId) => {
   return response.data
 }
 
+// Al final del combate, puedes reiniciar el estado de los Pokémon
+const resetPokemonState = () => {
+  team1.value.forEach(pokemon => {
+    pokemon.isWinner = false;
+    pokemon.isDefeated = false;
+  });
+
+  team2.value.forEach(pokemon => {
+    pokemon.isWinner = false;
+    pokemon.isDefeated = false;
+  });
+};
+
 const resetBattle = () => {
-  // Reiniciar solo las rondas y los equipos
   currentRound.value = 1;
   team1DefeatedCount.value = 0;
   team2DefeatedCount.value = 0;
 
-  // Reiniciar los equipos
+  resetPokemonState(); // Reinicia el estado de los Pokémon
   initializeTeams(); // Inicializa los equipos nuevamente
   winner.value = null; // Reinicia el ganador
 };
@@ -125,20 +138,22 @@ const initializeTeams = async () => {
   for (let i = 0; i < 5; i++) {
     const pokemonId1 = getRandomPokemonId();
     const pokemonId2 = getRandomPokemonId();
-    
+
     const data1 = await getPokemonData(pokemonId1);
     const data2 = await getPokemonData(pokemonId2);
-    
+
     team1.value.push({
       id: pokemonId1,
       data: data1,
+      isWinner: false,
       isDefeated: false, // Indicador de si el Pokémon fue derrotado
       isSelected: false,  // Indicador de si el Pokémon fue seleccionado
     });
-    
+
     team2.value.push({
       id: pokemonId2,
       data: data2,
+      isWinner: false,
       isDefeated: false // Indicador de si el Pokémon fue derrotado
     });
   }
@@ -152,10 +167,10 @@ const getStatValue = (pokemon, statName) => {
 const startBattle = async () => {
   if (playerName.value.trim() === '') {
     $q.notify({
-          message: 'Debes ingresar un nombre para el jugador.',
-          color: 'purple',
-          position: 'top'
-        });
+      message: 'Debes ingresar un nombre para el jugador.',
+      color: 'purple',
+      position: 'top'
+    });
     return;
   }
 
@@ -189,8 +204,6 @@ const selectPokemon1 = (pokemon) => {
   }
 };
 
-
-
 const randomPokemonFromTeam2 = () => {
   const alivePokemons = team2.value.filter(p => !p.isDefeated);
   return alivePokemons[Math.floor(Math.random() * alivePokemons.length)];
@@ -213,9 +226,11 @@ const attack = (pokemon1, pokemon2) => {
 
   if (stat1 > stat2) {
     pokemon2.isDefeated = true; // El Pokémon del equipo 2 es derrotado
+    pokemon1.isWinner = true;    // Pokémon del equipo 1 es el ganador
     team2DefeatedCount.value++;
   } else if (stat1 < stat2) {
     pokemon1.isDefeated = true; // El Pokémon del equipo 1 es derrotado
+    pokemon2.isWinner = true;    // Pokémon del equipo 2 es el ganador
     team1DefeatedCount.value++;
   } else {
     // En caso de empate, ambos pierden
@@ -236,7 +251,7 @@ const attack = (pokemon1, pokemon2) => {
 // Determinar el ganador al final de las rondas
 const determineWinner = () => {
   if (team1DefeatedCount.value < team2DefeatedCount.value) {
-    winner.value = playerName ;
+    winner.value = playerName.value;
   } else if (team1DefeatedCount.value > team2DefeatedCount.value) {
     winner.value = "Equipo 2";
   } else {
@@ -256,6 +271,17 @@ function capitalizeFirstLetter(str) {
 </script>
 
 <style scoped>
+.winner1 {
+  background-color: rgba(76, 175, 80, 0.5);
+  /* Verde translúcido */
+}
+
+.loser1 {
+  background-color: rgba(244, 67, 54, 0.5);
+  /* Rojo translúcido */
+}
+
+
 .battle-message {
   margin-top: 20px;
   font-size: 24px;
@@ -277,19 +303,26 @@ button:hover {
 }
 
 .battle-container {
-  background-image: url(https://wallpapers-clan.com/wp-content/uploads/2023/11/pokemon-smiling-gengar-desktop-wallpaper-preview.jpg); /* Reemplaza con la URL de tu imagen */
-  background-position: center; /* Centra la imagen */
-  background-size: cover; /* Cubre el área de la carta */
-  background-repeat: no-repeat; /* No repite la imagen */
+  background-image: url(https://wallpapers-clan.com/wp-content/uploads/2023/11/pokemon-smiling-gengar-desktop-wallpaper-preview.jpg);
+  /* Reemplaza con la URL de tu imagen */
+  background-position: center;
+  /* Centra la imagen */
+  background-size: cover;
+  /* Cubre el área de la carta */
+  background-repeat: no-repeat;
+  /* No repite la imagen */
   text-align: center;
   padding: 20px;
   background-color: #f9f9f9;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   color: #ccc;
-  position: relative; /* Necesario para que el botón se posicione en relación al contenedor */
-  min-height: 600px; /* Establece una altura mínima para evitar cambios de tamaño */
-  padding-bottom: 60px; /* Espacio para el botón "Volver a Jugar" */
+  position: relative;
+  /* Necesario para que el botón se posicione en relación al contenedor */
+  min-height: 300px;
+  /* Establece una altura mínima para evitar cambios de tamaño */
+  padding-bottom: 60px;
+  /* Espacio para el botón "Volver a Jugar" */
 }
 
 .pokemon-wrapper {
@@ -321,10 +354,13 @@ button:hover {
 
 .pokemon-card h3 h4 {
   font-size: 20px;
-  position: relative; /* Para asegurarte de que el texto se vea bien sobre la imagen */
-  z-index: 1; /* Asegúrate de que el texto esté por encima de la imagen */
+  position: relative;
+  /* Para asegurarte de que el texto se vea bien sobre la imagen */
+  z-index: 1;
+  /* Asegúrate de que el texto esté por encima de la imagen */
 
 }
+
 .pokemon-card:hover {
   transform: scale(1.05);
 }
@@ -339,15 +375,17 @@ button:hover {
 
 img {
   width: 90%;
-  height:auto;
+  height: auto;
 }
 
 .attack-buttons {
-  padding-top: 30px;
-  min-height: 60px; /* Reserva espacio para los botones de ataque, incluso si están ocultos */
+  min-height: 60px;
+  /* Reserva espacio para los botones de ataque, incluso si están ocultos */
   display: flex;
-  justify-content: center; /* Centra los botones */
-  align-items: center; /* Alinea verticalmente */
+  justify-content: center;
+  /* Centra los botones */
+  align-items: center;
+  /* Alinea verticalmente */
   position: absolute;
   bottom: 20px;
   left: 0;
@@ -355,15 +393,16 @@ img {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 60px; /* Reserva espacio para los botones de ataque */
 }
-.battle-message{
+
+.battle-message {
   position: absolute;
   bottom: 80px;
   left: 0;
   right: 0;
   text-align: center;
-  min-height: 60px; /* Reserva espacio para el mensaje */
+  min-height: 60px;
+  /* Reserva espacio para el mensaje */
 }
 
 .battle-message,
@@ -389,26 +428,33 @@ img {
 
 .restart-button {
   position: absolute;
-  bottom: 20px; /* Distancia desde la parte inferior */
-  right: 20px; /* Distancia desde la derecha */
-  background-color: #b700ff; /* Mantén el color del botón */
+  bottom: 20px;
+  /* Distancia desde la parte inferior */
+  right: 20px;
+  /* Distancia desde la derecha */
+  background-color: #b700ff;
+  /* Mantén el color del botón */
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  padding: 10px 20px; /* Tamaño del botón */
+  padding: 10px 20px;
+  /* Tamaño del botón */
   transition: background-color 0.3s ease;
 }
 
 .restart-button:hover {
-  background-color: #700092; /* Color al pasar el mouse */
+  background-color: #700092;
+  /* Color al pasar el mouse */
 }
-.winner h4{
+
+.winner h4 {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
 }
+
 .contenedor {
   background-image: url(https://steamuserimages-a.akamaihd.net/ugc/1690499676527753284/58A4A8691135FAB510042A54EDD97EB159EBE9E1/?imw=637&imh=358&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true);
   background-position: center !important;
@@ -417,39 +463,129 @@ img {
   text-align: center !important;
   margin-top: 50px !important;
   padding: 20px !important;
-  border: 2px solid #ffffff!important;
-  border-radius: 10px!important;
-  width: 60%;
-  background-color: #f9f9f9!important;
-  box-shadow: 0 4px 8px rgba(255, 255, 255, 0)!important;
-  color: #ffffff!important;
+  border: 2px solid #ffffff !important;
+  border-radius: 10px !important;
+  width: 90%;
+  background-color: #f9f9f9 !important;
+  box-shadow: 0 4px 8px rgba(255, 255, 255, 0) !important;
+  color: #ffffff !important;
+  margin: auto;
+  max-width: 600px;
 }
+
 .winner.contenedor h2 {
-  color: #ffffff!important;
-  margin-bottom: 20px!important;
-} 
+  color: #ffffff !important;
+  margin-bottom: 20px !important;
+}
 
 .contenedor label {
-  margin-right: 10px!important;
-  font-weight: bold!important;
+  margin-right: 10px !important;
+  font-weight: bold !important;
 }
 
-.contenedor select, 
+.contenedor select,
 .contenedor input {
-  margin-bottom: 20px!important;
-  padding: 10px!important;
-  border: 1px solid #00000000!important;
-  border-radius: 5px!important;
+  margin-bottom: 20px !important;
+  padding: 10px !important;
+  border: 1px solid #00000000 !important;
+  border-radius: 5px !important;
 }
-.input-group{
+
+.input-group {
   font-size: 20px;
 }
-.input-group input, select{
+
+.input-group input,
+select {
   width: 58%;
 }
-.winner h4{
+
+.winner h4 {
   background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
   -webkit-background-clip: text;
   color: transparent;
+}
+
+/* Media Query para pantallas menores o iguales a 550px */
+@media (max-width: 550px) {
+  .contenedor {
+    padding: 10px;
+    /* Reducir el padding en pantallas pequeñas */
+  }
+
+  .battle-container h2 {
+    font-size: 20px;
+  }
+
+  .pokemon-side {
+    width: 100%;
+    /* Hacer que los lados ocupen el 100% */
+    margin: 0;
+    /* Espacio entre los equipos */
+    margin-top: -15px;
+  }
+
+  .battle-container {
+    width: 550px;
+    height: 580px;
+    margin-left: -12%;
+  }
+
+  .pokemon-grid {
+    margin: 0;
+    margin-right: 10px;
+  }
+
+  .pokemon-card h3 {
+    font-size: 8px !important;
+  }
+
+  .pokemon-card {
+    margin: 0;
+    /* Centrar las cartas */
+  }
+
+  .attack-buttons {
+    flex-direction: column;
+    /* Colocar botones en columna */
+    margin-top: 10px;
+    /* Espacio superior para botones */
+  }
+
+  .attack-buttons button {
+    margin-bottom: 10px;
+    /* Espacio entre los botones */
+  }
+
+  .restart-button {
+    width: auto;
+    /* Mantener tamaño automático */
+    position: static;
+    /* Quitar posición absoluta */
+    margin: 10px auto;
+    /* Centrar el botón */
+  }
+
+  .contenedor h2 {
+    font-size: 50px;
+  }
+
+  /* Ajustar tamaño de texto */
+  .contenedor label,
+  .contenedor select,
+  .contenedor input {
+    font-size: 16px;
+    /* Reducir tamaño de fuente */
+  }
+
+  .winner h4 {
+    margin: 0;
+    font-size: 23px;
+    /* Reducir tamaño de fuente del ganador */
+  }
+
+  .input-group label {
+    font-size: 20px;
+  }
 }
 </style>
