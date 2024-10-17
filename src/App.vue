@@ -115,6 +115,36 @@ const team1 = ref([]);
 const team2 = ref([]);
 const selectedPokemon1 = ref({});
 const selectedPokemon2 = ref({});
+const attackedPokemonTeam2 = new Set();
+// Función para seleccionar un Pokémon del equipo 2 que no haya atacado
+const getNextAttackerTeam2 = () => {
+  let pokemonIndex;
+
+  // Buscar un Pokémon que no haya atacado en esta ronda
+  do {
+    pokemonIndex = Math.floor(Math.random() * team2.value.length);
+  } while (attackedPokemonTeam2.has(team2.value[pokemonIndex].id));
+
+  // Registrar el ID del Pokémon que va a atacar
+  attackedPokemonTeam2.add(team2.value[pokemonIndex].id);
+
+  // Retornar el índice del Pokémon seleccionado
+  return pokemonIndex;
+};
+
+const startRound = () => {
+  // Limpiar el registro de Pokémon que han atacado en la ronda anterior
+  attackedPokemonTeam2.clear();
+
+  // Aquí iría la lógica para manejar los ataques de ambos equipos.
+  for (let i = 0; i < 5; i++) {
+    const attackerIndexTeam1 = Math.floor(Math.random() * team1.value.length);
+    const attackerIndexTeam2 = getNextAttackerTeam2();
+
+    // Realizar los ataques entre los Pokémon seleccionados
+    attack(team1.value[attackerIndexTeam1], team2.value[attackerIndexTeam2]);
+  }
+};
 
 // Variables reactivas para controlar el estado del juego
 const battleMessage = ref('');
